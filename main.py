@@ -1,58 +1,9 @@
-import data
+import time
 from selenium import webdriver
-from selenium.webdriver import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions
-from selenium.webdriver.support.wait import WebDriverWait
-
-
-# no modificar
-def retrieve_phone_code(driver) -> str:
-    """Este código devuelve un número de confirmación de teléfono y lo devuelve como un string.
-    Utilízalo cuando la aplicación espere el código de confirmación para pasarlo a tus pruebas.
-    El código de confirmación del teléfono solo se puede obtener después de haberlo solicitado en la aplicación."""
-
-    import json
-    import time
-    from selenium.common import WebDriverException
-    code = None
-    for i in range(10):
-        try:
-            logs = [log["message"] for log in driver.get_log('performance') if log.get("message")
-                    and 'api/v1/number?number' in log.get("message")]
-            for log in reversed(logs):
-                message_data = json.loads(log)["message"]
-                body = driver.execute_cdp_cmd('Network.getResponseBody',
-                                              {'requestId': message_data["params"]["requestId"]})
-                code = ''.join([x for x in body['body'] if x.isdigit()])
-        except WebDriverException:
-            time.sleep(1)
-            continue
-        if not code:
-            raise Exception("No se encontró el código de confirmación del teléfono.\n"
-                            "Utiliza 'retrieve_phone_code' solo después de haber solicitado el código en tu aplicación.")
-        return code
-
-
-class UrbanRoutesPage:
-    from_field = (By.ID, 'from')
-    to_field = (By.ID, 'to')
-
-    def __init__(self, driver):
-        self.driver = driver
-
-    def set_from(self, from_address):
-        self.driver.find_element(*self.from_field).send_keys(from_address)
-
-    def set_to(self, to_address):
-        self.driver.find_element(*self.to_field).send_keys(to_address)
-
-    def get_from(self):
-        return self.driver.find_element(*self.from_field).get_property('value')
-
-    def get_to(self):
-        return self.driver.find_element(*self.to_field).get_property('value')
-
+import data
+from selenium.webdriver.chrome.options import Options
+from helpers import retrieve_phone_code
+from pages import UrbanRoutesPage
 
 
 class TestUrbanRoutes:
@@ -60,15 +11,19 @@ class TestUrbanRoutes:
     driver = None
 
     @classmethod
+
     def setup_class(cls):
-        # no lo modifiques, ya que necesitamos un registro adicional habilitado para recuperar el código de confirmación del teléfono
-        from selenium.webdriver import DesiredCapabilities
-        capabilities = DesiredCapabilities.CHROME
-        capabilities["goog:loggingPrefs"] = {'performance': 'ALL'}
-        cls.driver = webdriver.Chrome(desired_capabilities=capabilities)
+        chrome_options = Options()
+        chrome_options.set_capability("goog:loggingPrefs", {'performance': 'ALL'})
+
+        cls.driver = webdriver.Chrome (options=chrome_options)
+        cls.driver.implicitly_wait(10)
+        cls.driver.maximize_window()
+        cls.pages = UrbanRoutesPage(cls.driver)
 
     def test_set_route(self):
         self.driver.get(data.urban_routes_url)
+        self.driver.implicitly_wait(10)
         routes_page = UrbanRoutesPage(self.driver)
         address_from = data.address_from
         address_to = data.address_to
@@ -76,7 +31,56 @@ class TestUrbanRoutes:
         assert routes_page.get_from() == address_from
         assert routes_page.get_to() == address_to
 
+    def test_click_tariff_comfort(self):
+
+        self.pages.click_tariff_comfort()
+        assert self.driver.find_element(*UrbanRoutesPage.tariff_comfort).is_displayed()
+
+    def test_number_phone(self):
+        self.pages.click_add_number_phone()
+        assert self.driver.find_element(*UrbanRoutesPage.add_number_phone).is_displayed()
+
+    def test_saved_number(self):
+        self.pages.save_number(data.phone_number)
+        assert self.driver.find_element(*UrbanRoutesPage.code_number_phone).is_displayed()
+
+    def test_code_number(self):
+        assert self.driver.find_element(*UrbanRoutesPage.button_confirm).is_displayed()
+        code = retrieve_phone_code(self.driver)
+        self.pages.set_code_number_phone(code)
+
+    def test_set_pyment_method(self):
+        self.pages.set_pyment_method()
+        assert self.driver.find_element(*UrbanRoutesPage.number_card).is_displayed()
+
+    def test_set_add_card(self):
+        self.pages.set_add_card(data.card_number)
+        routes_page = UrbanRoutesPage(self.driver)
+        routes_page.set_add_card(data.card_number)
+        assert self.driver.find_element(*UrbanRoutesPage.code_card).is_displayed()
+
+    def test_set_code_card(self):
+        assert self.driver.find_element(*UrbanRoutesPage.code_card).is_displayed()
+        routes_page = UrbanRoutesPage(self.driver)
+        routes_page.set_code_card(data.card_code)
+
+
+    def test_message(self):
+        routes_page = UrbanRoutesPage(self.driver)
+        routes_page.set_message(data.message_for_driver)
+        message_element = self.driver.find_element(*UrbanRoutesPage.message)
+        assert message_element.get_property('value') == data.message_for_driver
+
+    def test_set_ask(self):
+        self.pages.set_ask()
+        checkbox = self.driver.find_element(*UrbanRoutesPage.ask_for_blanket)
+        assert 'slider round' in checkbox.get_attribute("class") or checkbox.is_selected()
+
+    def test_add_ice(self):
+        self.pages.add_ice()
+
 
     @classmethod
     def teardown_class(cls):
+        time.sleep(2)
         cls.driver.quit()
