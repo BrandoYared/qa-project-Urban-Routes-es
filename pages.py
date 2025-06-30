@@ -92,3 +92,6 @@ class UrbanRoutesPage:
     def add_ice(self):
         element = self.driver.find_element(*self.add_ice_cream)
         ActionChains(self.driver).double_click(element).perform()
+    def get_ice_cream_count(self):
+        counter = self.driver.find_element(By.CLASS_NAME, "counter-value")
+        return int(counter.text.strip())

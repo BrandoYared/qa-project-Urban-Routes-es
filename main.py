@@ -78,6 +78,10 @@ class TestUrbanRoutes:
 
     def test_add_ice(self):
         self.pages.add_ice()
+        ice_count = self.pages.get_ice_cream_count()
+        assert ice_count >= 2
+
+
 
 
     @classmethod
