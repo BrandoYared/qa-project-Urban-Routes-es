@@ -81,7 +81,9 @@ class TestUrbanRoutes:
         ice_count = self.pages.get_ice_cream_count()
         assert ice_count >= 2
 
-
+    def test_click_reserver_button(self):
+        self.pages.click_reserver_button()
+        assert self.driver.find_element(*UrbanRoutesPage.reserver).is_displayed()
 
 
     @classmethod

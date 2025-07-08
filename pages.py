@@ -95,3 +95,7 @@ class UrbanRoutesPage:
     def get_ice_cream_count(self):
         counter = self.driver.find_element(By.CLASS_NAME, "counter-value")
         return int(counter.text.strip())
+
+    # 11.- Clic en el botón de reservar
+    def click_reserver_button(self):
+        WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable(self.reserver)).click()
