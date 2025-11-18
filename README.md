@@ -16,7 +16,7 @@ Resultados:
 
  Este proyecto contiene pruebas automatizadas con Selenium que verifican el proceso completo de pedir un taxi en Urban Routes.
 
-## Requisitos
+## Requerimentos
 
 - Python 3.10+
 - Google Chrome
